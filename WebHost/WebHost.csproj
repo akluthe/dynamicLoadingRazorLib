@@ -9,7 +9,11 @@
     <None Include="Areas\**" />
     <Content Remove="Themes\**\*.*" />
     <None Include="Themes\**" />
-    <PackageReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.App" Version="2.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Modules\" />
   </ItemGroup>
 
 </Project>

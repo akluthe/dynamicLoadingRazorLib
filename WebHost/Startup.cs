@@ -40,8 +40,10 @@ namespace WebHost
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
-            var rootDir = new DirectoryInfo(_hostingEnvironment.ContentRootPath).Parent;
-            var dir = new DirectoryInfo(Path.Combine(rootDir.ToString(), "Plugin1", "bin", "Debug", "netstandard2.0"));
+            var rootDir = new DirectoryInfo(_hostingEnvironment.ContentRootPath);
+            var dir = new DirectoryInfo(Path.Combine(rootDir.ToString(), "Modules"));
+
+            List<string> assmemblyNameList = new List<string>();
 
             foreach (var file in dir.GetFileSystemInfos("*.dll", SearchOption.AllDirectories))
             {
@@ -60,6 +62,8 @@ namespace WebHost
                         throw;
                     }
                 }
+
+                assmemblyNameList.Add(assembly.GetName().Name);
             }
 
             services.Configure<RazorViewEngineOptions>(
@@ -67,27 +71,34 @@ namespace WebHost
 
             var mvcBuilder = services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
-            mvcBuilder.AddRazorOptions(o =>
-            {
-                o.AdditionalCompilationReferences.Add(MetadataReference.CreateFromFile(Assembly.Load(new AssemblyName("Plugin1")).Location));
-            });
 
-            var pluginAssembly = Assembly.Load(new AssemblyName("Plugin1"));
-            var partFactory = ApplicationPartFactory.GetApplicationPartFactory(pluginAssembly);
-            foreach (var part in partFactory.GetApplicationParts(pluginAssembly))
+            foreach (var item in assmemblyNameList)
             {
-                mvcBuilder.PartManager.ApplicationParts.Add(part);
-            }
+                mvcBuilder.AddRazorOptions(o =>
+                {
+                    o.AdditionalCompilationReferences.Add(MetadataReference.CreateFromFile(Assembly.Load(new AssemblyName(item)).Location));
+                });
 
-            var relatedAssemblies = RelatedAssemblyAttribute.GetRelatedAssemblies(pluginAssembly, throwOnError: true);
-            foreach (var assembly in relatedAssemblies)
-            {
-                partFactory = ApplicationPartFactory.GetApplicationPartFactory(assembly);
-                foreach (var part in partFactory.GetApplicationParts(assembly))
+                var pluginAssembly = Assembly.Load(new AssemblyName(item));
+                var partFactory = ApplicationPartFactory.GetApplicationPartFactory(pluginAssembly);
+
+                foreach (var part in partFactory.GetApplicationParts(pluginAssembly))
                 {
                     mvcBuilder.PartManager.ApplicationParts.Add(part);
                 }
+
+                var relatedAssemblies = RelatedAssemblyAttribute.GetRelatedAssemblies(pluginAssembly, throwOnError: true);
+                foreach (var assembly in relatedAssemblies)
+                {
+                    partFactory = ApplicationPartFactory.GetApplicationPartFactory(assembly);
+                    foreach (var part in partFactory.GetApplicationParts(assembly))
+                    {
+                        mvcBuilder.PartManager.ApplicationParts.Add(part);
+                    }
+                }
             }
+
+         
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
